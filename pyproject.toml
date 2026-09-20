@@ -1,0 +1,16 @@
+[project]
+name = "gdg-ai"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "ipykernel>=7.3.0",
+    "matplotlib>=3.11.2",
+    "scikit-learn>=1.9.1",
+    "tensorflow>=2.21.0",
+    "types-tensorflow>=2.18.0.20260827",
+]
+
+[tool.ty.environment]
+python = ".venv"
