@@ -1,0 +1,1129 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Gradient Descent의 cost, gradient, parameter update를 단계별로 확인하는 실습 도구">
+  <title>Gradient Descent 실습</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b1220'/%3E%3Cpath d='M10 18h44M10 32h44M10 46h44M18 10v44M32 10v44M46 10v44' stroke='%2320334d' stroke-width='2'/%3E%3Cpath d='M12 17c8 1 10 20 20 20s13-17 22-19' fill='none' stroke='%232dd4bf' stroke-width='5' stroke-linecap='round'/%3E%3Ccircle cx='32' cy='37' r='5' fill='%23fb7185'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      color-scheme: dark;
+      --page: #07101e;
+      --panel: #0d1929;
+      --panel-strong: #101f32;
+      --line: #20334d;
+      --line-soft: #17283e;
+      --text: #e7eef8;
+      --muted: #91a4be;
+      --teal: #2dd4bf;
+      --teal-soft: rgba(45, 212, 191, 0.15);
+      --coral: #fb7185;
+      --amber: #fbbf24;
+      --blue: #60a5fa;
+      --shadow: 0 18px 50px rgba(0, 0, 0, 0.24);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      min-width: 320px;
+      background: var(--page);
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 88% -10%, rgba(45, 212, 191, 0.12), transparent 34rem),
+        radial-gradient(circle at 5% 30%, rgba(96, 165, 250, 0.09), transparent 30rem),
+        var(--page);
+      font-family: Pretendard, "Apple SD Gothic Neo", Inter, system-ui, sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+    }
+
+    .app-shell {
+      width: min(1520px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 24px 0 40px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 18px;
+    }
+
+    .title-group h1 {
+      margin: 0;
+      font-size: clamp(1.45rem, 2.5vw, 2.15rem);
+      letter-spacing: -0.035em;
+    }
+
+    .title-group p {
+      margin: 5px 0 0;
+      color: var(--muted);
+    }
+
+    .apply-status {
+      display: inline-flex;
+      align-items: center;
+      flex: 0 0 auto;
+      gap: 9px;
+      padding: 9px 13px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      background: rgba(13, 25, 41, 0.82);
+      font-size: 0.9rem;
+    }
+
+    .status-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--teal);
+      box-shadow: 0 0 0 4px rgba(45, 212, 191, 0.12);
+    }
+
+    .apply-status.dirty .status-dot {
+      background: var(--amber);
+      box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.12);
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(280px, 330px) minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(16, 31, 50, 0.96), rgba(10, 21, 36, 0.96));
+      box-shadow: var(--shadow);
+    }
+
+    .controls {
+      position: sticky;
+      top: 16px;
+      padding: 20px;
+    }
+
+    .panel-heading {
+      margin: 0 0 16px;
+      font-size: 1.12rem;
+      letter-spacing: -0.02em;
+    }
+
+    fieldset {
+      margin: 0;
+      padding: 0;
+      border: 0;
+    }
+
+    fieldset + fieldset {
+      margin-top: 18px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line-soft);
+    }
+
+    legend {
+      width: 100%;
+      margin-bottom: 10px;
+      color: #cbd8e8;
+      font-weight: 700;
+      font-size: 0.92rem;
+    }
+
+    .control-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 62px;
+      gap: 10px;
+      align-items: center;
+      margin-top: 11px;
+    }
+
+    .control-row label,
+    .toggle-row label {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .control-row input[type="range"] {
+      grid-column: 1 / -1;
+      width: 100%;
+      height: 5px;
+      margin: 0;
+      accent-color: var(--teal);
+      cursor: pointer;
+    }
+
+    output {
+      justify-self: end;
+      min-width: 58px;
+      padding: 3px 7px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      color: var(--text);
+      background: #091525;
+      font: 600 0.84rem/1.35 ui-monospace, SFMono-Regular, Menlo, monospace;
+      text-align: right;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-top: 9px;
+    }
+
+    .toggle-row input {
+      width: 20px;
+      height: 20px;
+      accent-color: var(--teal);
+    }
+
+    .control-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px;
+      margin-top: 20px;
+    }
+
+    .button {
+      min-height: 43px;
+      padding: 10px 14px;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      font-weight: 750;
+      cursor: pointer;
+      transition: transform 120ms ease, background 120ms ease, border-color 120ms ease;
+    }
+
+    .button:hover:not(:disabled) {
+      transform: translateY(-1px);
+    }
+
+    .button:focus-visible,
+    input:focus-visible {
+      outline: 3px solid rgba(96, 165, 250, 0.5);
+      outline-offset: 2px;
+    }
+
+    .button:disabled {
+      cursor: not-allowed;
+      opacity: 0.52;
+    }
+
+    .button-primary {
+      color: #04231f;
+      background: var(--teal);
+    }
+
+    .button-secondary {
+      border-color: var(--line);
+      color: var(--text);
+      background: #14243a;
+    }
+
+    .button-coral {
+      color: #310912;
+      background: var(--coral);
+    }
+
+    .formula-card {
+      margin-top: 18px;
+      padding: 14px;
+      border: 1px solid var(--line-soft);
+      border-radius: 12px;
+      color: #b9c9dd;
+      background: rgba(5, 14, 26, 0.52);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.82rem;
+      line-height: 1.75;
+    }
+
+    .lab {
+      min-width: 0;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .metric {
+      min-width: 0;
+      padding: 13px 15px;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      background: rgba(13, 25, 41, 0.9);
+    }
+
+    .metric-label {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    .metric-value {
+      display: block;
+      overflow: hidden;
+      color: var(--text);
+      font: 700 1rem/1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .charts {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .chart-card {
+      min-width: 0;
+      padding: 16px 16px 12px;
+    }
+
+    .chart-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .chart-heading h2 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .chart-heading span {
+      color: var(--muted);
+      font: 0.8rem/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 310px;
+      border: 1px solid var(--line-soft);
+      border-radius: 10px;
+      background: #081422;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.79rem;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-line,
+    .legend-dot {
+      width: 18px;
+      height: 3px;
+      border-radius: 999px;
+      background: currentColor;
+    }
+
+    .legend-dot {
+      width: 7px;
+      height: 7px;
+    }
+
+    .step-panel {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: center;
+      margin-top: 12px;
+      padding: 17px;
+    }
+
+    .step-panel h2 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .equations {
+      display: grid;
+      gap: 5px;
+      color: #bdd0e5;
+      font: 0.86rem/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    .step-actions {
+      display: flex;
+      gap: 9px;
+    }
+
+    .history-panel {
+      margin-top: 12px;
+      overflow: hidden;
+    }
+
+    .history-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 15px 17px 10px;
+    }
+
+    .history-heading h2 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .history-heading span {
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .table-wrap {
+      max-height: 230px;
+      overflow: auto;
+      border-top: 1px solid var(--line-soft);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-variant-numeric: tabular-nums;
+    }
+
+    th,
+    td {
+      padding: 9px 16px;
+      border-bottom: 1px solid var(--line-soft);
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    th:first-child,
+    td:first-child {
+      text-align: left;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      color: var(--muted);
+      background: #0c1929;
+      font-size: 0.78rem;
+      font-weight: 650;
+    }
+
+    td {
+      color: #c9d6e6;
+      font: 0.82rem/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    tbody tr:last-child td {
+      color: var(--teal);
+      background: rgba(45, 212, 191, 0.06);
+    }
+
+    @media (max-width: 1080px) {
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+
+      .controls {
+        position: static;
+      }
+
+      form {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+      }
+
+      fieldset + fieldset {
+        margin-top: 0;
+        padding-top: 0;
+        border-top: 0;
+      }
+
+      .control-actions,
+      .formula-card {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .app-shell {
+        width: min(100% - 20px, 1520px);
+        padding-top: 14px;
+      }
+
+      .topbar,
+      .step-panel {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .topbar {
+        display: flex;
+      }
+
+      .apply-status {
+        align-self: flex-start;
+      }
+
+      form,
+      .charts {
+        grid-template-columns: 1fr;
+      }
+
+      .metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .step-panel {
+        display: flex;
+      }
+
+      .step-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      canvas {
+        height: 270px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div class="title-group">
+        <h1>Gradient Descent 실습</h1>
+        <p>Gradient를 확인하고 한 단계씩 파라미터를 업데이트해 보세요.</p>
+      </div>
+      <div class="apply-status" id="apply-status" role="status" aria-live="polite">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span id="status-text">설정 적용됨</span>
+      </div>
+    </header>
+
+    <div class="workspace">
+      <aside class="panel controls" aria-labelledby="control-heading">
+        <h2 class="panel-heading" id="control-heading">Control Panel</h2>
+        <form id="control-form">
+          <fieldset>
+            <legend>Target parameters</legend>
+            <div class="control-row">
+              <label for="target-a">target a</label>
+              <output id="target-a-value" for="target-a">5.30</output>
+              <input id="target-a" type="range" min="-10" max="10" step="0.01" value="5.3">
+            </div>
+            <div class="control-row">
+              <label for="target-b">target b</label>
+              <output id="target-b-value" for="target-b">-4.30</output>
+              <input id="target-b" type="range" min="-10" max="10" step="0.01" value="-4.3">
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Initial parameters</legend>
+            <div class="control-row">
+              <label for="initial-a">initial a</label>
+              <output id="initial-a-value" for="initial-a">3.00</output>
+              <input id="initial-a" type="range" min="-10" max="10" step="0.01" value="3">
+            </div>
+            <div class="control-row">
+              <label for="initial-b">initial b</label>
+              <output id="initial-b-value" for="initial-b">4.00</output>
+              <input id="initial-b" type="range" min="-10" max="10" step="0.01" value="4">
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Data</legend>
+            <div class="toggle-row">
+              <label for="noise-enabled">Gaussian noise</label>
+              <input id="noise-enabled" type="checkbox">
+            </div>
+            <div class="control-row">
+              <label for="noise-std">noise std</label>
+              <output id="noise-std-value" for="noise-std">0.40</output>
+              <input id="noise-std" type="range" min="0" max="0.5" step="0.01" value="0.4">
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Update</legend>
+            <div class="control-row">
+              <label for="learning-rate">learning rate</label>
+              <output id="learning-rate-value" for="learning-rate">0.030</output>
+              <input id="learning-rate" type="range" min="0" max="0.1" step="0.001" value="0.03">
+            </div>
+            <div class="control-row">
+              <label for="steps">연속 실행 steps</label>
+              <output id="steps-value" for="steps">10</output>
+              <input id="steps" type="range" min="1" max="100" step="1" value="10">
+            </div>
+          </fieldset>
+
+          <div class="control-actions">
+            <button class="button button-primary" id="apply-button" type="submit">Apply</button>
+            <button class="button button-secondary" id="reset-button" type="button">학습 초기화</button>
+          </div>
+
+          <div class="formula-card" aria-label="학습에 사용하는 수식">
+            <div>ŷ = a·sin²(x) + b·x</div>
+            <div>L = mean((ŷ - y)²)</div>
+            <div>θ ← θ - learning_rate·∇L</div>
+          </div>
+        </form>
+      </aside>
+
+      <section class="lab" aria-label="Optimizer 흉내내기">
+        <div class="metrics" aria-live="polite">
+          <div class="metric">
+            <span class="metric-label">완료한 step</span>
+            <span class="metric-value" id="metric-step">0</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">현재 a, b</span>
+            <span class="metric-value" id="metric-params">3.000, 4.000</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">업데이트 전 MSE</span>
+            <span class="metric-value" id="metric-cost-before">—</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">업데이트 후 MSE</span>
+            <span class="metric-value" id="metric-cost-after">—</span>
+          </div>
+        </div>
+
+        <div class="charts">
+          <article class="panel chart-card">
+            <div class="chart-heading">
+              <h2>업데이트 전</h2>
+              <span id="before-params">a=3.000, b=4.000</span>
+            </div>
+            <canvas id="before-chart" role="img" aria-label="업데이트 전 target 함수와 prediction 비교 그래프"></canvas>
+            <div class="legend" aria-hidden="true">
+              <span class="legend-item" style="color:#e7eef8"><span class="legend-line"></span>clean target</span>
+              <span class="legend-item" style="color:#91a4be"><span class="legend-dot"></span>observed data</span>
+              <span class="legend-item" style="color:#fb7185"><span class="legend-line"></span>prediction</span>
+            </div>
+          </article>
+
+          <article class="panel chart-card">
+            <div class="chart-heading">
+              <h2>업데이트 후</h2>
+              <span id="after-params">a=3.000, b=4.000</span>
+            </div>
+            <canvas id="after-chart" role="img" aria-label="업데이트 후 target 함수와 prediction 비교 그래프"></canvas>
+            <div class="legend" aria-hidden="true">
+              <span class="legend-item" style="color:#e7eef8"><span class="legend-line"></span>clean target</span>
+              <span class="legend-item" style="color:#91a4be"><span class="legend-dot"></span>observed data</span>
+              <span class="legend-item" style="color:#2dd4bf"><span class="legend-line"></span>prediction</span>
+            </div>
+          </article>
+        </div>
+
+        <section class="panel step-panel" aria-labelledby="step-heading">
+          <div>
+            <h2 id="step-heading">이번 업데이트</h2>
+            <div class="equations">
+              <span id="gradient-values">∂L/∂a = —, ∂L/∂b = —</span>
+              <span id="a-equation">a_new = a - learning_rate × ∂L/∂a</span>
+              <span id="b-equation">b_new = b - learning_rate × ∂L/∂b</span>
+            </div>
+          </div>
+          <div class="step-actions">
+            <button class="button button-coral" id="step-button" type="button">한 단계 업데이트</button>
+            <button class="button button-secondary" id="run-button" type="button">설정한 steps 실행</button>
+          </div>
+        </section>
+
+        <section class="panel history-panel" aria-labelledby="history-heading">
+          <div class="history-heading">
+            <h2 id="history-heading">Parameter history</h2>
+            <span>현재 설정으로 계산한 full-batch gradient</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">step</th>
+                  <th scope="col">a</th>
+                  <th scope="col">b</th>
+                  <th scope="col">MSE</th>
+                </tr>
+              </thead>
+              <tbody id="history-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    const elements = {
+      form: $("control-form"),
+      applyButton: $("apply-button"),
+      resetButton: $("reset-button"),
+      stepButton: $("step-button"),
+      runButton: $("run-button"),
+      status: $("apply-status"),
+      statusText: $("status-text"),
+      beforeChart: $("before-chart"),
+      afterChart: $("after-chart"),
+      historyBody: $("history-body")
+    };
+
+    const state = {
+      config: null,
+      dataset: null,
+      current: null,
+      step: 0,
+      history: [],
+      yRawMin: 0,
+      yRawMax: 1,
+      yLimits: [-1, 1],
+      lastTransition: null,
+      running: false,
+      stopRequested: false
+    };
+
+    const rangeIds = [
+      "target-a",
+      "target-b",
+      "initial-a",
+      "initial-b",
+      "noise-std",
+      "learning-rate",
+      "steps"
+    ];
+
+    function decimalsFromStep(stepValue) {
+      const text = String(stepValue);
+      return text.includes(".") ? text.split(".")[1].length : 0;
+    }
+
+    function syncRangeOutput(input) {
+      const output = $(`${input.id}-value`);
+      const decimals = decimalsFromStep(input.step);
+      output.value = Number(input.value).toFixed(decimals);
+    }
+
+    function markDirty() {
+      elements.status.classList.add("dirty");
+      elements.statusText.textContent = "변경 사항 있음 · Apply 필요";
+    }
+
+    rangeIds.forEach((id) => {
+      const input = $(id);
+      syncRangeOutput(input);
+      input.addEventListener("input", () => {
+        syncRangeOutput(input);
+        markDirty();
+      });
+    });
+
+    $("noise-enabled").addEventListener("change", markDirty);
+
+    function readConfig() {
+      return {
+        targetA: Number($("target-a").value),
+        targetB: Number($("target-b").value),
+        initialA: Number($("initial-a").value),
+        initialB: Number($("initial-b").value),
+        noiseEnabled: $("noise-enabled").checked,
+        noiseStd: Number($("noise-std").value),
+        learningRate: Number($("learning-rate").value),
+        steps: Number($("steps").value)
+      };
+    }
+
+    function model(x, params) {
+      return params.a * Math.sin(x) ** 2 + params.b * x;
+    }
+
+    function mulberry32(seed) {
+      return function random() {
+        let value = seed += 0x6D2B79F5;
+        value = Math.imul(value ^ value >>> 15, value | 1);
+        value ^= value + Math.imul(value ^ value >>> 7, value | 61);
+        return ((value ^ value >>> 14) >>> 0) / 4294967296;
+      };
+    }
+
+    function gaussian(random) {
+      let u = 0;
+      let v = 0;
+      while (u === 0) u = random();
+      while (v === 0) v = random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+
+    function makeDataset(config) {
+      const count = 200;
+      const xMin = -Math.PI;
+      const xMax = 2 * Math.PI;
+      const random = mulberry32(20260922);
+      const target = { a: config.targetA, b: config.targetB };
+      const xs = [];
+      const cleanYs = [];
+      const ys = [];
+
+      for (let i = 0; i < count; i += 1) {
+        const x = xMin + (xMax - xMin) * i / (count - 1);
+        const cleanY = model(x, target);
+        const noise = config.noiseEnabled ? config.noiseStd * gaussian(random) : 0;
+        xs.push(x);
+        cleanYs.push(cleanY);
+        ys.push(cleanY + noise);
+      }
+
+      return { xs, cleanYs, ys, xMin, xMax };
+    }
+
+    function evaluate(params) {
+      const { xs, ys } = state.dataset;
+      const predictions = new Array(xs.length);
+      let squaredErrorSum = 0;
+      let gradA = 0;
+      let gradB = 0;
+
+      for (let i = 0; i < xs.length; i += 1) {
+        const prediction = model(xs[i], params);
+        const error = prediction - ys[i];
+        const dLossDOut = 2 * error / xs.length;
+        predictions[i] = prediction;
+        squaredErrorSum += error * error;
+        gradA += dLossDOut * Math.sin(xs[i]) ** 2;
+        gradB += dLossDOut * xs[i];
+      }
+
+      return {
+        params: { ...params },
+        predictions,
+        cost: squaredErrorSum / xs.length,
+        gradA,
+        gradB
+      };
+    }
+
+    function updateParams(evaluation) {
+      return {
+        a: evaluation.params.a - state.config.learningRate * evaluation.gradA,
+        b: evaluation.params.b - state.config.learningRate * evaluation.gradB
+      };
+    }
+
+    function getPaddedLimits(minValue, maxValue, paddingRatio = 0.05, minimumPadding = 0.1) {
+      const padding = Math.max((maxValue - minValue) * paddingRatio, minimumPadding);
+      return [minValue - padding, maxValue + padding];
+    }
+
+    function includeInYLimits(...series) {
+      for (const values of series) {
+        for (const value of values) {
+          state.yRawMin = Math.min(state.yRawMin, value);
+          state.yRawMax = Math.max(state.yRawMax, value);
+        }
+      }
+      state.yLimits = getPaddedLimits(state.yRawMin, state.yRawMax);
+    }
+
+    function formatNumber(value, digits = 4) {
+      const absolute = Math.abs(value);
+      if (absolute !== 0 && (absolute >= 10000 || absolute < 0.0001)) {
+        return value.toExponential(3);
+      }
+      return value.toFixed(digits);
+    }
+
+    function prepareCanvas(canvas) {
+      const rect = canvas.getBoundingClientRect();
+      const ratio = Math.min(window.devicePixelRatio || 1, 2);
+      const width = Math.max(rect.width, 320);
+      const height = Math.max(rect.height, 240);
+      canvas.width = Math.round(width * ratio);
+      canvas.height = Math.round(height * ratio);
+      const context = canvas.getContext("2d");
+      context.setTransform(ratio, 0, 0, ratio, 0, 0);
+      return { context, width, height };
+    }
+
+    function drawSeries(context, values, mapX, mapY, color, width = 2.5) {
+      context.beginPath();
+      for (let i = 0; i < values.length; i += 1) {
+        const x = mapX(state.dataset.xs[i]);
+        const y = mapY(values[i]);
+        if (i === 0) context.moveTo(x, y);
+        else context.lineTo(x, y);
+      }
+      context.strokeStyle = color;
+      context.lineWidth = width;
+      context.lineJoin = "round";
+      context.lineCap = "round";
+      context.stroke();
+    }
+
+    function drawChart(canvas, evaluation, predictionColor) {
+      const { context, width, height } = prepareCanvas(canvas);
+      const margins = { top: 16, right: 16, bottom: 40, left: 54 };
+      const plotWidth = width - margins.left - margins.right;
+      const plotHeight = height - margins.top - margins.bottom;
+      const [yMin, yMax] = state.yLimits;
+      const { xMin, xMax, xs, ys, cleanYs } = state.dataset;
+      const mapX = (x) => margins.left + (x - xMin) / (xMax - xMin) * plotWidth;
+      const mapY = (y) => margins.top + (yMax - y) / (yMax - yMin) * plotHeight;
+
+      context.clearRect(0, 0, width, height);
+      context.fillStyle = "#081422";
+      context.fillRect(0, 0, width, height);
+
+      context.font = "12px ui-monospace, SFMono-Regular, Menlo, monospace";
+      context.textBaseline = "middle";
+      context.lineWidth = 1;
+
+      const yTicks = 5;
+      for (let tick = 0; tick <= yTicks; tick += 1) {
+        const value = yMin + (yMax - yMin) * tick / yTicks;
+        const y = mapY(value);
+        context.beginPath();
+        context.moveTo(margins.left, y);
+        context.lineTo(width - margins.right, y);
+        context.strokeStyle = "#17283e";
+        context.stroke();
+        context.fillStyle = "#7890ad";
+        context.textAlign = "right";
+        context.fillText(formatNumber(value, 1), margins.left - 9, y);
+      }
+
+      const xTicks = [
+        { value: -Math.PI, label: "−π" },
+        { value: 0, label: "0" },
+        { value: Math.PI, label: "π" },
+        { value: 2 * Math.PI, label: "2π" }
+      ];
+
+      for (const tick of xTicks) {
+        const x = mapX(tick.value);
+        context.beginPath();
+        context.moveTo(x, margins.top);
+        context.lineTo(x, height - margins.bottom);
+        context.strokeStyle = "#17283e";
+        context.stroke();
+        context.fillStyle = "#7890ad";
+        context.textAlign = "center";
+        context.fillText(tick.label, x, height - 18);
+      }
+
+      if (state.config.noiseEnabled) {
+        context.fillStyle = "rgba(145, 164, 190, 0.55)";
+        for (let i = 0; i < xs.length; i += 2) {
+          context.beginPath();
+          context.arc(mapX(xs[i]), mapY(ys[i]), 1.8, 0, Math.PI * 2);
+          context.fill();
+        }
+      }
+
+      drawSeries(context, cleanYs, mapX, mapY, "#e7eef8", 2.8);
+      drawSeries(context, evaluation.predictions, mapX, mapY, predictionColor, 2.8);
+    }
+
+    function renderHistory() {
+      elements.historyBody.innerHTML = state.history.map((entry) => `
+        <tr>
+          <td>${entry.step}</td>
+          <td>${formatNumber(entry.a, 6)}</td>
+          <td>${formatNumber(entry.b, 6)}</td>
+          <td>${formatNumber(entry.cost, 6)}</td>
+        </tr>
+      `).join("");
+
+      const wrapper = elements.historyBody.closest(".table-wrap");
+      wrapper.scrollTop = wrapper.scrollHeight;
+    }
+
+    function renderTransition(before, after) {
+      includeInYLimits(before.predictions, after.predictions);
+      state.lastTransition = { before, after };
+
+      drawChart(elements.beforeChart, before, "#fb7185");
+      drawChart(elements.afterChart, after, "#2dd4bf");
+
+      $("before-params").textContent = `a=${formatNumber(before.params.a, 3)}, b=${formatNumber(before.params.b, 3)}`;
+      $("after-params").textContent = `a=${formatNumber(after.params.a, 3)}, b=${formatNumber(after.params.b, 3)}`;
+      $("metric-step").textContent = String(state.step);
+      $("metric-params").textContent = `${formatNumber(state.current.a, 3)}, ${formatNumber(state.current.b, 3)}`;
+      $("metric-cost-before").textContent = formatNumber(before.cost, 6);
+      $("metric-cost-after").textContent = formatNumber(after.cost, 6);
+      $("gradient-values").textContent = `∂L/∂a = ${formatNumber(before.gradA, 6)}, ∂L/∂b = ${formatNumber(before.gradB, 6)}`;
+      $("a-equation").textContent = `a_new = ${formatNumber(before.params.a, 4)} - ${formatNumber(state.config.learningRate, 4)} × (${formatNumber(before.gradA, 4)}) = ${formatNumber(after.params.a, 4)}`;
+      $("b-equation").textContent = `b_new = ${formatNumber(before.params.b, 4)} - ${formatNumber(state.config.learningRate, 4)} × (${formatNumber(before.gradB, 4)}) = ${formatNumber(after.params.b, 4)}`;
+
+      renderHistory();
+    }
+
+    function applyConfiguration() {
+      state.config = readConfig();
+      state.dataset = makeDataset(state.config);
+      state.current = { a: state.config.initialA, b: state.config.initialB };
+      state.step = 0;
+      const initialEvaluation = evaluate(state.current);
+      const baseValues = [
+        ...state.dataset.cleanYs,
+        ...state.dataset.ys,
+        ...initialEvaluation.predictions
+      ];
+      state.yRawMin = Math.min(...baseValues);
+      state.yRawMax = Math.max(...baseValues);
+      state.yLimits = getPaddedLimits(state.yRawMin, state.yRawMax);
+      state.history = [{
+        step: 0,
+        a: state.current.a,
+        b: state.current.b,
+        cost: initialEvaluation.cost
+      }];
+
+      const previewEvaluation = evaluate(updateParams(initialEvaluation));
+      renderTransition(initialEvaluation, previewEvaluation);
+      elements.status.classList.remove("dirty");
+      elements.statusText.textContent = "설정 적용됨";
+    }
+
+    function stepOnce() {
+      const before = evaluate(state.current);
+      const nextParams = updateParams(before);
+      const after = evaluate(nextParams);
+      state.current = nextParams;
+      state.step += 1;
+      state.history.push({
+        step: state.step,
+        a: nextParams.a,
+        b: nextParams.b,
+        cost: after.cost
+      });
+      renderTransition(before, after);
+    }
+
+    function resetLearning() {
+      if (!state.config) return;
+      state.current = { a: state.config.initialA, b: state.config.initialB };
+      state.step = 0;
+      const evaluation = evaluate(state.current);
+      const baseValues = [
+        ...state.dataset.cleanYs,
+        ...state.dataset.ys,
+        ...evaluation.predictions
+      ];
+      state.yRawMin = Math.min(...baseValues);
+      state.yRawMax = Math.max(...baseValues);
+      state.yLimits = getPaddedLimits(state.yRawMin, state.yRawMax);
+      state.history = [{
+        step: 0,
+        a: state.current.a,
+        b: state.current.b,
+        cost: evaluation.cost
+      }];
+      const previewEvaluation = evaluate(updateParams(evaluation));
+      renderTransition(evaluation, previewEvaluation);
+    }
+
+    function delay(milliseconds) {
+      return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+    }
+
+    async function runConfiguredSteps() {
+      if (state.running) {
+        state.stopRequested = true;
+        return;
+      }
+
+      state.running = true;
+      state.stopRequested = false;
+      elements.runButton.textContent = "중지";
+      elements.stepButton.disabled = true;
+      elements.applyButton.disabled = true;
+      elements.resetButton.disabled = true;
+
+      for (let i = 0; i < state.config.steps; i += 1) {
+        if (state.stopRequested) break;
+        stepOnce();
+        await delay(180);
+      }
+
+      state.running = false;
+      elements.runButton.textContent = "설정한 steps 실행";
+      elements.stepButton.disabled = false;
+      elements.applyButton.disabled = false;
+      elements.resetButton.disabled = false;
+    }
+
+    elements.form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      applyConfiguration();
+    });
+
+    elements.resetButton.addEventListener("click", resetLearning);
+    elements.stepButton.addEventListener("click", stepOnce);
+    elements.runButton.addEventListener("click", runConfiguredSteps);
+
+    const resizeObserver = new ResizeObserver(() => {
+      if (state.lastTransition) {
+        drawChart(elements.beforeChart, state.lastTransition.before, "#fb7185");
+        drawChart(elements.afterChart, state.lastTransition.after, "#2dd4bf");
+      }
+    });
+
+    resizeObserver.observe(elements.beforeChart);
+    resizeObserver.observe(elements.afterChart);
+
+    applyConfiguration();
+  </script>
+</body>
+</html>
