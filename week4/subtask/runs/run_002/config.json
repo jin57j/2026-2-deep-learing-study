@@ -1,0 +1,24 @@
+{
+  "task": "grayscale_cat_dog",
+  "classes": [
+    "cat",
+    "dog"
+  ],
+  "manifest": "subtask/data/manifest.csv",
+  "input_shape": [
+    160,
+    160,
+    1
+  ],
+  "grayscale": "tf.image.rgb_to_grayscale_float32_0_255",
+  "encoder_source": "resnet/resnet-classroom/a_base/final.weights.h5",
+  "encoder_trainable": false,
+  "adapter": "Conv2D(3, 1), ones kernel, zero bias",
+  "head": "Dense64/ReLU/Dense2 logits",
+  "checkpoint_scope": "full_model_weights",
+  "optimizer": "Adam",
+  "learning_rate": 0.001,
+  "batch_size": 8,
+  "epochs": 3,
+  "seed": 42
+}

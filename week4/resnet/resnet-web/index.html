@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ResNet A~E 모델의 입력부터 모든 레이어의 실제 계산값과 최종 출력까지 확인하는 로컬 실습 도구">
+  <title>ResNet Classroom · 모델 계산 탐색</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <script defer src="assets/tf.min.js"></script>
+  <script defer src="assets/tf-backend-webgpu.js"></script>
+  <script defer src="assets/tf-backend-wasm.js"></script>
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <main>
+    <header><div><p class="eyebrow">RESNET CLASSROOM</p><h1>모델의 계산을 따라가기</h1><p class="muted">이미지 한 장을 고르고, 각 레이어의 실제 값과 최종 결과를 확인하세요.</p></div><span id="backend" class="badge">초기화 대기</span></header>
+    <section class="panel" aria-labelledby="model-heading">
+      <div class="section-title"><h2 id="model-heading">1. 모델과 학습 정보</h2><label>모델 <select id="model" aria-label="모델 선택"></select></label></div>
+      <p id="problem"></p><dl id="model-summary" class="summary"></dl>
+      <details id="training-details"><summary>학습 데이터와 하이퍼파라미터</summary><dl id="training" class="summary"></dl><p class="footnote">표시한 설정은 제공 학습 코드·문서 기준입니다. 모델 가중치 자체가 전체 학습 이력을 담고 있지는 않습니다.</p><p id="weight-source" class="footnote wrap"></p></details>
+    </section>
+    <section class="panel" aria-labelledby="input-heading">
+      <h2 id="input-heading">2. Test 이미지 선택</h2>
+      <div class="controls"><label>데이터셋 <select id="dataset"></select></label><label class="grow">이미지 <select id="sample"></select></label><button id="run" class="primary" disabled>추론 실행</button></div>
+      <div class="input-result"><figure><canvas id="image" width="160" height="160" aria-label="선택한 Test 이미지"></canvas><figcaption id="sample-id"></figcaption></figure><div class="grow"><p class="label">기대 라벨 · 데이터 정답</p><p id="expected" class="expected"></p><div id="result" aria-live="polite"><p class="muted">실행하면 모델의 예측을 보여줍니다.</p></div></div></div>
+    </section>
+    <section class="panel" aria-labelledby="trace-heading">
+      <div class="section-title"><h2 id="trace-heading">3. 레이어별 계산과 값 탐색</h2><span id="trace-count" class="muted">실행 전</span></div>
+      <p id="status" role="status">실행 환경을 준비하고 있습니다.</p><progress id="progress" max="1" value="0" aria-label="전체 레이어 계산 진행"></progress>
+      <div class="inspector"><div class="layer-column"><label>레이어 찾기 <input id="layer-search" type="search" placeholder="예: conv4, add, dense" autocomplete="off"></label><div id="layers" class="layers" aria-label="전체 레이어 목록"></div></div>
+        <div class="tensor-column"><h3 id="layer-name">레이어를 선택하세요</h3><p id="layer-shape" class="mono muted"></p>
+          <div id="layer-help" class="layer-help" hidden><p id="layer-operation"></p><details id="layer-help-details"><summary>레이어 이름 풀이 · 도움말</summary><dl id="layer-terms" class="summary"></dl></details></div>
+          <section id="layer-structure" class="layer-structure" aria-label="블록 구조와 현재 연산" hidden></section><p id="layer-parents" class="footnote"></p>
+          <div class="channel-control"><label>채널 <input id="channel" type="number" min="0" max="0" value="0"></label><input id="channel-slider" type="range" min="0" max="0" value="0" aria-label="채널 이동"></div>
+          <div class="canvases"><div><canvas id="overview" width="512" height="512" aria-label="채널별 격자 타일"></canvas><div class="pagination"><button id="previous" aria-label="이전 채널 페이지">←</button><span id="page-label" class="footnote"></span><button id="next" aria-label="다음 채널 페이지">→</button></div></div><div><canvas id="zoom" width="512" height="512" aria-label="선택한 채널 확대 격자"></canvas><p id="cell-value" class="mono cell">셀을 가리키거나 눌러 실제 값을 확인하세요.</p></div></div>
+          <p id="color-scale" class="footnote"></p><details><summary>선택 채널의 실제 숫자</summary><div id="numbers" class="numbers mono"></div></details>
+        </div>
+      </div>
+    </section>
+    <footer><span>이미지와 추론은 이 컴퓨터에서 처리됩니다.</span><a href="../resnet-classroom/data/SOURCE.md">데이터 출처·가공 안내</a></footer>
+  </main>
+</body>
+</html>

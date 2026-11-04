@@ -1,0 +1,8 @@
+{
+  "checkpoint": "epoch_001.weights.h5",
+  "epoch": 1,
+  "test_count": 90,
+  "test_accuracy": 0.9777777777777777,
+  "test_loss": 0.06081952899694443,
+  "restore_max_abs_difference": 0.0
+}

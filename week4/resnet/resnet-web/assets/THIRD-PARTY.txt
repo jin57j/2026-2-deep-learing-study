@@ -1,0 +1,4 @@
+TensorFlow.js 4.22.0 and its WebGPU/WASM backends
+Copyright Google LLC and contributors. Licensed under Apache-2.0.
+https://github.com/tensorflow/tfjs/blob/v4.22.0/LICENSE
+Original license headers are preserved in the bundled JavaScript files.
